@@ -2,54 +2,53 @@
 #Import Libraries
 import subprocess
 import sys
+import re
 
 #Define  Functions
-def check_args():   #Check Arguments   
-    if len(sys.argv) > 1 and sys.argv[1] == '-e':   #If there are arguments and the first one is -e
+def check_args():                                                       #Check Arguments   
+    if len(sys.argv) > 1 and sys.argv[1] == '-e':                       #If there are arguments and the first one is -e
         subprocess.call('sudo vim /usr/local/bin/mkexec', shell=True)   #Call vim to edit file
-        exit()  #Leave
-    return
+        exit()                                                          #Leave                                                                 
 
-def check_root_required():  #Determine if root is required to make file
+def check_root_required():                                                              #Determine if root is required to make file
     euid = subprocess.check_output('echo $EUID', universal_newlines=True, shell=True)   #Check if user is root
-    rdir = subprocess.check_output('ls -al', shell=True)
-    if euid =='0\n':
-        is_root = True
-    else:
-        is_root = False
-    dir_list = []
-    for item in rdir.split():
-        dir_list.append(item)
-    rdir = dir_list[2]
-    dir_list = None
-    if 'drwxr-xr-x' in str(rdir):
-        root_dir = True
-    else:
-        root_dir = False
-    if root_dir and euid != '0\n':
-        prefix = 'sudo'
-    else:
-        prefix = ''
-    return prefix
+    rdir = subprocess.check_output('ls -al', shell=True)                                #Check directory permisions
+    if euid =='0\n':                                                                    #If the euid is 0 (root)
+        is_root = True                                                                  #Set is_root to True
+    else:                                                                               #If other than 0
+        is_root = False                                                                 #Set is_root to false
+    dir_list = []                                                                       #Declare dir_list
+    for item in rdir.split():                                                           #Split rdir into separate entries and add to dir_list
+        dir_list.append(item)                                                           #Append rdir entry into dir_list
+    rdir = dir_list[2]                                                                  #Set rdir to the 3rd value of dir_list (the value of current directory)
+    dir_list = None                                                                     #Empty dir_list to save space
+    if 'drwxr-xr-x' in str(rdir):                                                       #If directory permissions are root,
+        root_dir = True                                                                 #Set root_dir to True
+    else:                                                                               #If directory permissions aren't root
+        root_dir = False                                                                #Set root_dir to False
+    if root_dir and euid != '0\n':                                                      #If not run as root and directory requires it,
+        prefix = 'sudo'                                                                 #Set prefix to 'sudo'
+    else:                                                                               #Otherwise if either root or directory doesn't require root,
+        prefix = ''                                                                     #Set prefix to empty
+    return prefix                                                                       #Return the prefix
 
-def get_file_info():
-    file_name = input('Name of file: ')
-    shebang = input('Enter shebang or leave empty: ')
-    if input('Executable? y/n: ')[0].upper() == 'Y':
-        executable = True
-    else:
-        executable = False
-    return [file_name, shebang, executable]
+def get_file_info():                                                            #Get information about file
+    file_name = input('Name of file: ')                                         #Get name of file
+    shebang = input('Enter shebang or leave empty: ')                           #Get shebang for file
+    if input('Executable? y/n: ')[0].upper() == 'Y':                            #If answer is any form of yes
+        executable = True                                                       #Set executable variable True
+    else:                                                                       #Otherwise
+        executable = False                                                      #Set executable variable to False
+    return [file_name, shebang, executable]                                     #Return a list of the name, shebang, and executable boolean
 
-def make_file(name, shebang, executable_boolean, prefix):
-    subprocess.call(f'{prefix} touch {name}', shell=True)
-    if shebang:
-        subprocess.call(f'{prefix} tee {name} <<< "{shebang}"', shell=True)
-    if executable:
-        subprocess.call(f'{prefix} chmod +x {name}', shell=True)
-    return
+def make_file(name, shebang, executable_boolean, prefix):                       #Create and modify file
+    subprocess.call(f'{prefix} touch {name}', shell=True)                       #Create file
+    if shebang:                                                                 #If there is a shebang
+        subprocess.call(f'{prefix} tee {name} <<< "{shebang}"', shell=True)     #Echo shebang to top of file
+    if executable:                                                              #If the file should be executable
+        subprocess.call(f'{prefix} chmod +x {name}', shell=True)                #Make file executable
 
-check_args()
-prefix = check_root_required()
-file_name, shebang, executable = get_file_info()
-make_file(file_name, shebang, executable, prefix)
+check_args()                                            #Check if should be edited
+prefix = check_root_required()                          #Get prefix
+file_name, shebang, executable = get_file_info()        #Get file info
+make_file(file_name, shebang, executable, prefix)       #Create the file with info
